@@ -2,13 +2,11 @@ package main
 
 type HuffmanTree struct {
 	root Node
-	left Node
-	right Node
 	weight int
 }
 
-func NewHuffmanTree(root *Node, l *Node, r *Node, weight int) HuffmanTree {
-	return HuffmanTree{root: *root, left: *l, right: *r, weight: weight}
+func NewHuffmanTree(root *Node, weight int) HuffmanTree {
+	return HuffmanTree{root: *root, weight: weight}
 }
 
 func (h HuffmanTree) Weight() int {
