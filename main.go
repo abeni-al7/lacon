@@ -27,6 +27,28 @@ func countCharacterOccurrences(file *os.File) (map[string]int, error) {
 	return frequencyTable, nil
 }
 
+func buildHuffmanTree(frequencyTable map[string]int) HuffmanTree {
+	h := &MinHeap{}
+	heap.Init(h)
+
+	for letter, freq := range frequencyTable {
+		node := NewLeafNode(letter, freq)
+		current := NewHuffmanTree(node)
+
+		h.Push(current)
+	}
+
+	for h.Len() > 1 {
+		var node1 Node = h.Pop().(Node)
+		var node2 Node = h.Pop().(Node)
+
+		newNode := NewInternalNode(node1.Weight()+node2.Weight(), &node1, &node2)
+		newTree := NewHuffmanTree(newNode)
+		h.Push(newTree)
+	}
+
+	return h.Pop().(HuffmanTree)
+}
 
 func main() {
 	path := filepath.Join(".", "test", "test.txt")
@@ -41,25 +63,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	h := &MinHeap{}
-	heap.Init(h)
-
-	for letter, freq := range(frequencyTable) {
-		node := NewLeafNode(letter, freq)
-		current := NewHuffmanTree(node)
-
-		h.Push(current)
-	}
-
-	for h.Len() > 1 {
-		var node1 Node = h.Pop().(Node)
-		var node2 Node = h.Pop().(Node)
-
-		newNode := NewInternalNode(node1.Weight() + node2.Weight(), &node1, &node2)
-		newTree := NewHuffmanTree(newNode)
-		h.Push(newTree)
-	}
-
-	tree := h.Pop()
+	tree := buildHuffmanTree(frequencyTable)
 	fmt.Println(tree)
 }

@@ -41,3 +41,37 @@ func TestCountCharacterOccurrences_MainUseCase(t *testing.T) {
 		t.Fatalf("unexpected frequency table\nwant: %#v\ngot:  %#v", want, got)
 	}
 }
+
+func TestBuildHuffmanTree_MultipleLetters(t *testing.T) {
+	frequencyTable := map[string]int{
+		"a": 2,
+		"b": 3,
+		"c": 4,
+	}
+
+	tree := buildHuffmanTree(frequencyTable)
+
+	if tree.Weight() != 9 {
+		t.Fatalf("unexpected tree weight\nwant: %d\ngot:  %d", 9, tree.Weight())
+	}
+
+	if tree.IsLeaf() {
+		t.Fatal("expected non-leaf root for multiple letters")
+	}
+}
+
+func TestBuildHuffmanTree_SingleLetter(t *testing.T) {
+	frequencyTable := map[string]int{
+		"x": 7,
+	}
+
+	tree := buildHuffmanTree(frequencyTable)
+
+	if tree.Weight() != 7 {
+		t.Fatalf("unexpected tree weight\nwant: %d\ngot:  %d", 7, tree.Weight())
+	}
+
+	if !tree.IsLeaf() {
+		t.Fatal("expected leaf root for single letter")
+	}
+}
