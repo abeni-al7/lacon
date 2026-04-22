@@ -40,10 +40,26 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Print(frequencyTable)
 
 	h := &MinHeap{}
 	heap.Init(h)
 
-	
+	for letter, freq := range(frequencyTable) {
+		node := NewLeafNode(letter, freq)
+		current := NewHuffmanTree(node)
+
+		h.Push(current)
+	}
+
+	for h.Len() > 1 {
+		var node1 Node = h.Pop().(Node)
+		var node2 Node = h.Pop().(Node)
+
+		newNode := NewInternalNode(node1.Weight() + node2.Weight(), &node1, &node2)
+		newTree := NewHuffmanTree(newNode)
+		h.Push(newTree)
+	}
+
+	tree := h.Pop()
+	fmt.Println(tree)
 }
