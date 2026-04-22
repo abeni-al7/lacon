@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"container/heap"
 	"fmt"
 	"log"
 	"os"
@@ -41,4 +42,8 @@ func main() {
 	}
 	fmt.Print(frequencyTable)
 
+	h := &MinHeap{}
+	heap.Init(h)
+
+	
 }

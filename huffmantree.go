@@ -5,8 +5,8 @@ type HuffmanTree struct {
 	weight int
 }
 
-func NewHuffmanTree(root *Node, weight int) HuffmanTree {
-	return HuffmanTree{root: *root, weight: weight}
+func NewHuffmanTree(root *Node) HuffmanTree {
+	return HuffmanTree{root: *root, weight: (*root).Weight()}
 }
 
 func (h HuffmanTree) Weight() int {
@@ -15,4 +15,8 @@ func (h HuffmanTree) Weight() int {
 
 func (h HuffmanTree) IsLeaf() bool {
 	return h.root.IsLeaf()
+}
+
+func (h HuffmanTree) Less(other HuffmanTree) bool {
+	return h.weight <= other.weight
 }
