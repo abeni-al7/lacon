@@ -7,6 +7,70 @@ import (
 	"testing"
 )
 
+func TestConstructPrefixCodeTable_TwoLeafTree(t *testing.T) {
+	leftLeaf := NewLeafNode("a", 1)
+	rightLeaf := NewLeafNode("b", 1)
+
+	var left Node = leftLeaf
+	var right Node = rightLeaf
+	root := NewInternalNode(2, &left, &right)
+	tree := NewHuffmanTree(root)
+
+	got := make(map[string]string)
+	constructPrefixCodeTable(got, tree, "")
+
+	want := map[string]string{
+		"a": "0",
+		"b": "1",
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected prefix code table\nwant: %#v\ngot:  %#v", want, got)
+	}
+}
+
+func TestConstructPrefixCodeTable_SingleLeafTree(t *testing.T) {
+	tree := NewHuffmanTree(NewLeafNode("x", 7))
+
+	got := make(map[string]string)
+	constructPrefixCodeTable(got, tree, "")
+
+	want := map[string]string{
+		"x": "",
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected prefix code table\nwant: %#v\ngot:  %#v", want, got)
+	}
+}
+
+func TestConstructPrefixCodeTable_NestedTree(t *testing.T) {
+	leftLeftLeaf := NewLeafNode("a", 1)
+	leftRightLeaf := NewLeafNode("b", 1)
+	rightLeaf := NewLeafNode("c", 2)
+
+	var leftLeft Node = leftLeftLeaf
+	var leftRight Node = leftRightLeaf
+	leftRoot := NewInternalNode(2, &leftLeft, &leftRight)
+	var leftTree Node = leftRoot
+	var rightTree Node = rightLeaf
+	root := NewInternalNode(4, &leftTree, &rightTree)
+	tree := NewHuffmanTree(root)
+
+	got := make(map[string]string)
+	constructPrefixCodeTable(got, tree, "")
+
+	want := map[string]string{
+		"a": "00",
+		"b": "01",
+		"c": "1",
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected prefix code table\nwant: %#v\ngot:  %#v", want, got)
+	}
+}
+
 func TestCountCharacterOccurrences_MainUseCase(t *testing.T) {
 	tempDir := t.TempDir()
 	filePath := filepath.Join(tempDir, "input.txt")

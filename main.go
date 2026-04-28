@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"container/heap"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -51,17 +50,12 @@ func buildHuffmanTree(frequencyTable map[string]int) HuffmanTree {
 }
 
 func constructPrefixCodeTable(table map[string]string, node HuffmanTree, current string) {
-	fmt.Println(current)
 	if s, ok := node.root.(LeafNode); ok {
 		key := s.Letter()
 		table[key] = current
 	} else if s, ok := node.root.(InternalNode); ok {
-		if l, ok := (s.Left()).(HuffmanTree); ok {
-			constructPrefixCodeTable(table, l, current + "0")
-		}
-		if r, ok := (s.Right()).(HuffmanTree); ok {
-			constructPrefixCodeTable(table, r, current + "1")
-		}
+		constructPrefixCodeTable(table, NewHuffmanTree(s.Left()), current+"0")
+		constructPrefixCodeTable(table, NewHuffmanTree(s.Right()), current+"1")
 	}
 }
 
@@ -82,5 +76,4 @@ func main() {
 
 	prefixCodeTable := make(map[string]string)
 	constructPrefixCodeTable(prefixCodeTable, tree, "")
-	fmt.Println(prefixCodeTable)
 }
