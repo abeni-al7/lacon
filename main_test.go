@@ -7,6 +7,38 @@ import (
 	"testing"
 )
 
+func TestWriteHeader_WritesFrequencyTableAndNewline(t *testing.T) {
+	tempDir := t.TempDir()
+	outputPath := filepath.Join(tempDir, "output.dat")
+
+	outputFile, err := os.Create(outputPath)
+	if err != nil {
+		t.Fatalf("failed to create output file: %v", err)
+	}
+
+	frequencyTable := map[string]int{
+		"a": 2,
+		"b": 1,
+		"c": 3,
+	}
+
+	writeHeader(frequencyTable, outputFile)
+
+	if err := outputFile.Close(); err != nil {
+		t.Fatalf("failed to close output file: %v", err)
+	}
+
+	got, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("failed to read output file: %v", err)
+	}
+
+	want := []byte("{\"a\":2,\"b\":1,\"c\":3}\n")
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected header contents\nwant: %q\ngot:  %q", want, got)
+	}
+}
+
 func TestConstructPrefixCodeTable_TwoLeafTree(t *testing.T) {
 	leftLeaf := NewLeafNode("a", 1)
 	rightLeaf := NewLeafNode("b", 1)
