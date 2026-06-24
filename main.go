@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"container/heap"
+	"encoding/json"
 	"log"
 	"os"
 	"path/filepath"
@@ -59,15 +60,25 @@ func constructPrefixCodeTable(table map[string]string, node HuffmanTree, current
 	}
 }
 
-func main() {
-	path := filepath.Join(".", "test", "test.txt")
-	file, err := os.Open(path)
+func writeHeader(freqTable map[string]int, outputFile *os.File) {
+	jsonData, err := json.Marshal(freqTable)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer file.Close()
 
-	frequencyTable, err := countCharacterOccurrences(file)
+	_, err = outputFile.Write(jsonData)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = outputFile.WriteString("\n")
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func huffmanEncode(input *os.File, output *os.File) {
+	frequencyTable, err := countCharacterOccurrences(input)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -76,4 +87,24 @@ func main() {
 
 	prefixCodeTable := make(map[string]string)
 	constructPrefixCodeTable(prefixCodeTable, tree, "")
+
+	writeHeader(frequencyTable, output)
+}
+
+func main() {
+	inputPath := filepath.Join(".", "test", "test.txt")
+	inputFile, err := os.Open(inputPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer inputFile.Close()
+
+	outputPath := filepath.Join(".", "test", "test_output.dat")
+	outputFile, err := os.Create(outputPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer outputFile.Close()
+
+	huffmanEncode(inputFile, outputFile)
 }
