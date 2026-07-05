@@ -99,7 +99,7 @@ func main() {
 	}
 	defer inputFile.Close()
 
-	outputPath := filepath.Join(".", "test", "test_output.dat")
+	outputPath := filepath.Join(".", "test", "test_output.txt")
 	outputFile, err := os.Create(outputPath)
 	if err != nil {
 		log.Fatal(err)
