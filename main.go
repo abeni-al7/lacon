@@ -77,6 +77,30 @@ func writeHeader(freqTable map[string]int, outputFile *os.File) {
 	}
 }
 
+func writeContents(prefixCodeTable map[string]string, inputFile *os.File, outputFile *os.File) error {
+	bitWriter := NewBitWriter(outputFile)
+
+	scanner := bufio.NewScanner(inputFile)
+	for scanner.Scan() {
+		line := scanner.Text()
+		for _, v := range line {
+			err := bitWriter.Writebits(prefixCodeTable[string(v)])
+			if err != nil {
+				return err
+			}
+		}
+	}
+	err := bitWriter.Flush()
+		if err != nil {
+			return err
+		}
+
+	if err = scanner.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func huffmanEncode(input *os.File, output *os.File) {
 	frequencyTable, err := countCharacterOccurrences(input)
 	if err != nil {
@@ -89,6 +113,14 @@ func huffmanEncode(input *os.File, output *os.File) {
 	constructPrefixCodeTable(prefixCodeTable, tree, "")
 
 	writeHeader(frequencyTable, output)
+
+	if _, err := input.Seek(0, 0); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := writeContents(prefixCodeTable, input, output); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
