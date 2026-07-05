@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -36,6 +37,50 @@ func TestWriteHeader_WritesFrequencyTableAndNewline(t *testing.T) {
 	want := []byte("{\"a\":2,\"b\":1,\"c\":3}\n")
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected header contents\nwant: %q\ngot:  %q", want, got)
+	}
+}
+
+func TestWriteContents_WritesEncodedBits(t *testing.T) {
+	tempDir := t.TempDir()
+	inputPath := filepath.Join(tempDir, "input.txt")
+	outputPath := filepath.Join(tempDir, "output.dat")
+
+	if err := os.WriteFile(inputPath, []byte("ab"), 0o600); err != nil {
+		t.Fatalf("failed to write input file: %v", err)
+	}
+
+	inputFile, err := os.Open(inputPath)
+	if err != nil {
+		t.Fatalf("failed to open input file: %v", err)
+	}
+	defer inputFile.Close()
+
+	outputFile, err := os.Create(outputPath)
+	if err != nil {
+		t.Fatalf("failed to create output file: %v", err)
+	}
+
+	prefixCodeTable := map[string]string{
+		"a": "0",
+		"b": "1",
+	}
+
+	if err := writeContents(prefixCodeTable, inputFile, outputFile); err != nil {
+		t.Fatalf("writeContents returned an error: %v", err)
+	}
+
+	if err := outputFile.Close(); err != nil {
+		t.Fatalf("failed to close output file: %v", err)
+	}
+
+	got, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("failed to read output file: %v", err)
+	}
+
+	want := []byte{0x40}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("unexpected encoded bytes\nwant: %v\ngot:  %v", want, got)
 	}
 }
 
