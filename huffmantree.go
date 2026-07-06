@@ -1,12 +1,13 @@
 package main
 
 type HuffmanTree struct {
-	root Node
-	weight int
+	root    Node
+	weight  int
+	sortKey string
 }
 
 func NewHuffmanTree(root Node) HuffmanTree {
-	return HuffmanTree{root: root, weight: root.Weight()}
+	return HuffmanTree{root: root, weight: root.Weight(), sortKey: treeSortKey(root)}
 }
 
 func (h HuffmanTree) Weight() int {
@@ -18,5 +19,9 @@ func (h HuffmanTree) IsLeaf() bool {
 }
 
 func (h HuffmanTree) Less(other HuffmanTree) bool {
-	return h.weight <= other.weight
+	if h.weight != other.weight {
+		return h.weight < other.weight
+	}
+
+	return h.sortKey < other.sortKey
 }

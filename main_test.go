@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -34,9 +35,13 @@ func TestWriteHeader_WritesFrequencyTableAndNewline(t *testing.T) {
 		t.Fatalf("failed to read output file: %v", err)
 	}
 
-	want := []byte("{\"a\":2,\"b\":1,\"c\":3}\n")
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("unexpected header contents\nwant: %q\ngot:  %q", want, got)
+	var gotHeader map[string]int
+	if err := json.Unmarshal(bytes.TrimSpace(got), &gotHeader); err != nil {
+		t.Fatalf("failed to unmarshal header: %v", err)
+	}
+
+	if !reflect.DeepEqual(gotHeader, frequencyTable) {
+		t.Fatalf("unexpected header frequencies\nwant: %#v\ngot:  %#v", frequencyTable, gotHeader)
 	}
 }
 
@@ -84,6 +89,38 @@ func TestWriteContents_WritesEncodedBits(t *testing.T) {
 	}
 }
 
+func TestReadAndRebuildPrefixTable_ParsesHeader(t *testing.T) {
+	header := map[string]int{
+		"a": 2,
+		"b": 1,
+		"\n": 1,
+	}
+
+	headerBytes, err := json.Marshal(header)
+	if err != nil {
+		t.Fatalf("failed to marshal header: %v", err)
+	}
+
+	prefixTable, totalCount, err := ReadAndRebuildPrefixTable(headerBytes)
+	if err != nil {
+		t.Fatalf("ReadAndRebuildPrefixTable returned an error: %v", err)
+	}
+
+	if totalCount != 4 {
+		t.Fatalf("unexpected count\nwant: %d\ngot:  %d", 4, totalCount)
+	}
+
+	want := map[string]string{
+		"a": "1",
+		"b": "01",
+		"\n": "00",
+	}
+
+	if !reflect.DeepEqual(prefixTable, want) {
+		t.Fatalf("unexpected prefix table\nwant: %#v\ngot:  %#v", want, prefixTable)
+	}
+}
+
 func TestConstructPrefixCodeTable_TwoLeafTree(t *testing.T) {
 	leftLeaf := NewLeafNode("a", 1)
 	rightLeaf := NewLeafNode("b", 1)
@@ -113,11 +150,109 @@ func TestConstructPrefixCodeTable_SingleLeafTree(t *testing.T) {
 	constructPrefixCodeTable(got, tree, "")
 
 	want := map[string]string{
-		"x": "",
+		"x": "0",
 	}
 
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected prefix code table\nwant: %#v\ngot:  %#v", want, got)
+	}
+}
+
+func TestHuffmanRoundTrip_PreservesNewlines(t *testing.T) {
+	tempDir := t.TempDir()
+	inputPath := filepath.Join(tempDir, "input.txt")
+	compressedPath := filepath.Join(tempDir, "compressed.dat")
+	decodedPath := filepath.Join(tempDir, "decoded.txt")
+
+	original := []byte("hello\nworld\n")
+	if err := os.WriteFile(inputPath, original, 0o600); err != nil {
+		t.Fatalf("failed to write input file: %v", err)
+	}
+
+	inputFile, err := os.Open(inputPath)
+	if err != nil {
+		t.Fatalf("failed to open input file: %v", err)
+	}
+	defer inputFile.Close()
+
+	compressedFile, err := os.Create(compressedPath)
+	if err != nil {
+		t.Fatalf("failed to create compressed file: %v", err)
+	}
+	defer compressedFile.Close()
+
+	huffmanEncode(inputFile, compressedFile)
+
+	if _, err := compressedFile.Seek(0, 0); err != nil {
+		t.Fatalf("failed to rewind compressed file: %v", err)
+	}
+
+	decodedFile, err := os.Create(decodedPath)
+	if err != nil {
+		t.Fatalf("failed to create decoded file: %v", err)
+	}
+	defer decodedFile.Close()
+
+	if err := huffmanDecode(compressedFile, decodedFile); err != nil {
+		t.Fatalf("huffmanDecode returned an error: %v", err)
+	}
+
+	got, err := os.ReadFile(decodedPath)
+	if err != nil {
+		t.Fatalf("failed to read decoded file: %v", err)
+	}
+
+	if !bytes.Equal(got, original) {
+		t.Fatalf("round-trip mismatch\nwant: %q\ngot:  %q", original, got)
+	}
+}
+
+func TestHuffmanRoundTrip_SingleSymbol(t *testing.T) {
+	tempDir := t.TempDir()
+	inputPath := filepath.Join(tempDir, "input.txt")
+	compressedPath := filepath.Join(tempDir, "compressed.dat")
+	decodedPath := filepath.Join(tempDir, "decoded.txt")
+
+	original := []byte("aaaaaa")
+	if err := os.WriteFile(inputPath, original, 0o600); err != nil {
+		t.Fatalf("failed to write input file: %v", err)
+	}
+
+	inputFile, err := os.Open(inputPath)
+	if err != nil {
+		t.Fatalf("failed to open input file: %v", err)
+	}
+	defer inputFile.Close()
+
+	compressedFile, err := os.Create(compressedPath)
+	if err != nil {
+		t.Fatalf("failed to create compressed file: %v", err)
+	}
+	defer compressedFile.Close()
+
+	huffmanEncode(inputFile, compressedFile)
+
+	if _, err := compressedFile.Seek(0, 0); err != nil {
+		t.Fatalf("failed to rewind compressed file: %v", err)
+	}
+
+	decodedFile, err := os.Create(decodedPath)
+	if err != nil {
+		t.Fatalf("failed to create decoded file: %v", err)
+	}
+	defer decodedFile.Close()
+
+	if err := huffmanDecode(compressedFile, decodedFile); err != nil {
+		t.Fatalf("huffmanDecode returned an error: %v", err)
+	}
+
+	got, err := os.ReadFile(decodedPath)
+	if err != nil {
+		t.Fatalf("failed to read decoded file: %v", err)
+	}
+
+	if !bytes.Equal(got, original) {
+		t.Fatalf("round-trip mismatch\nwant: %q\ngot:  %q", original, got)
 	}
 }
 
@@ -173,6 +308,7 @@ func TestCountCharacterOccurrences_MainUseCase(t *testing.T) {
 		"e": 1,
 		"l": 3,
 		"o": 2,
+		"\n": 1,
 		"w": 1,
 		"r": 1,
 		"d": 1,
