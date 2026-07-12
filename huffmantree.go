@@ -10,6 +10,22 @@ func NewHuffmanTree(root Node) HuffmanTree {
 	return HuffmanTree{root: root, weight: root.Weight(), sortKey: treeSortKey(root)}
 }
 
+func treeSortKey(node Node) string {
+	switch current := node.(type) {
+	case LeafNode:
+		return current.Letter()
+	case InternalNode:
+		leftKey := treeSortKey(current.Left())
+		rightKey := treeSortKey(current.Right())
+		if leftKey < rightKey {
+			return leftKey
+		}
+		return rightKey
+	default:
+		return ""
+	}
+}
+
 func (h HuffmanTree) Weight() int {
 	return h.root.Weight()
 }
