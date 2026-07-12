@@ -3,11 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/abeni-al7/lacon/core"
 )
+
+func fail(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "error: "+format+"\n", args...)
+	os.Exit(1)
+}
 
 func main() {
 	encode := flag.Bool("e", false, "encode the input file")
@@ -32,23 +36,23 @@ func main() {
 
 	inputFile, err := os.Open(input)
 	if err != nil {
-		log.Fatal(err)
+		fail("could not open input file: %v", err)
 	}
 	defer inputFile.Close()
 
 	outputFile, err := os.Create(output)
 	if err != nil {
-		log.Fatal(err)
+		fail("could not create output file: %v", err)
 	}
 	defer outputFile.Close()
 
 	if *encode {
 		if err := core.Encode(inputFile, outputFile); err != nil {
-			log.Fatal(err)
+			fail("encoding failed: %v", err)
 		}
 	} else {
 		if err := core.Decode(inputFile, outputFile); err != nil {
-			log.Fatal(err)
+			fail("decoding failed: %v", err)
 		}
 	}
 }

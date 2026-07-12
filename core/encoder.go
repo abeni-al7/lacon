@@ -65,21 +65,23 @@ func constructPrefixCodeTable(table map[string]string, node HuffmanTree, current
 	}
 }
 
-func writeHeader(freqTable map[string]int, output io.Writer) {
+func writeHeader(freqTable map[string]int, output io.Writer) error {
 	jsonData, err := json.Marshal(freqTable)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	_, err = output.Write(jsonData)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	_, err = output.Write([]byte("\n"))
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
 func writeContents(prefixCodeTable map[string]string, input io.Reader, output io.Writer) error {
@@ -126,7 +128,9 @@ func Encode(r io.Reader, w io.Writer) error {
 	constructPrefixCodeTable(prefixCodeTable, tree, "")
 
 	// Write header (frequency table as JSON)
-	writeHeader(frequencyTable, w)
+	if err := writeHeader(frequencyTable, w); err != nil {
+		return err
+	}
 
 	// Second pass: write encoded contents
 	if err := writeContents(prefixCodeTable, bytes.NewReader(data), w); err != nil {
