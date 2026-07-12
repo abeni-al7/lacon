@@ -104,11 +104,11 @@ export default function FileUploader({ mode, onFileSelect, isProcessing, selecte
                 <p className="font-semibold text-[var(--color-foreground)] text-base">{selectedFile.name}</p>
                 <p className="text-sm text-[var(--color-foreground)] opacity-50">{formatSize(selectedFile.size)}</p>
               </div>
-              {/* File size visual bar */}
+              {/* File ready indicator bar */}
               <div className="w-full max-w-[200px] h-1.5 rounded-full bg-[var(--color-border)] overflow-hidden">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-light)] transition-all duration-500"
-                  style={{ width: `${Math.min(100, (selectedFile.size / 10485760) * 100)}%` }}
+                  style={{ width: '100%' }}
                 />
               </div>
               {!isProcessing && (
