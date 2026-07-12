@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from 'react'
-import { Upload, FileText, Lock, Unlock, Loader2 } from 'lucide-react'
+import { Upload, FileText, Lock, Unlock } from 'lucide-react'
 
 interface FileUploaderProps {
   mode: 'encode' | 'decode'
