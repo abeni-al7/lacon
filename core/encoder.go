@@ -2,7 +2,6 @@ package core
 
 import (
 	"bufio"
-	"bytes"
 	"container/heap"
 	"encoding/json"
 	"io"
@@ -108,15 +107,10 @@ func writeContents(prefixCodeTable map[string]string, input io.Reader, output io
 }
 
 // Encode compresses data from r and writes the compressed output to w.
-func Encode(r io.Reader, w io.Writer) error {
-	// Read all input into a buffer so we can process it twice
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return err
-	}
-
+// r must be seekable so that two passes can be made over the data.
+func Encode(r io.ReadSeeker, w io.Writer) error {
 	// First pass: count character frequencies
-	frequencyTable, err := countCharacterOccurrences(bytes.NewReader(data))
+	frequencyTable, err := countCharacterOccurrences(r)
 	if err != nil {
 		return err
 	}
@@ -132,8 +126,13 @@ func Encode(r io.Reader, w io.Writer) error {
 		return err
 	}
 
+	// Rewind to the beginning for the second pass
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+
 	// Second pass: write encoded contents
-	if err := writeContents(prefixCodeTable, bytes.NewReader(data), w); err != nil {
+	if err := writeContents(prefixCodeTable, r, w); err != nil {
 		return err
 	}
 
