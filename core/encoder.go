@@ -1,20 +1,19 @@
-package main
+package core
 
 import (
 	"bufio"
+	"bytes"
 	"container/heap"
 	"encoding/json"
 	"io"
-	"log"
-	"os"
 )
 
-func countCharacterOccurrences(file *os.File) (map[string]int, error) {
+func countCharacterOccurrences(reader io.Reader) (map[string]int, error) {
 	frequencyTable := make(map[string]int)
 
-	reader := bufio.NewReader(file)
+	bufReader := bufio.NewReader(reader)
 	for {
-		char, _, err := reader.ReadRune()
+		char, _, err := bufReader.ReadRune()
 		if err == io.EOF {
 			break
 		}
@@ -43,8 +42,8 @@ func buildHuffmanTree(frequencyTable map[string]int) HuffmanTree {
 		leftTree := heap.Pop(h).(HuffmanTree)
 		rightTree := heap.Pop(h).(HuffmanTree)
 
-		var left Node = leftTree.root
-		var right Node = rightTree.root
+		var left Node = leftTree.Root()
+		var right Node = rightTree.Root()
 		newNode := NewInternalNode(left.Weight()+right.Weight(), &left, &right)
 		newTree := NewHuffmanTree(newNode)
 		heap.Push(h, newTree)
@@ -54,39 +53,39 @@ func buildHuffmanTree(frequencyTable map[string]int) HuffmanTree {
 }
 
 func constructPrefixCodeTable(table map[string]string, node HuffmanTree, current string) {
-	if s, ok := node.root.(LeafNode); ok {
+	if s, ok := node.Root().(LeafNode); ok {
 		key := s.Letter()
 		if current == "" {
 			current = "0" // handle trees with single node
 		}
 		table[key] = current
-	} else if s, ok := node.root.(InternalNode); ok {
+	} else if s, ok := node.Root().(InternalNode); ok {
 		constructPrefixCodeTable(table, NewHuffmanTree(s.Left()), current+"0")
 		constructPrefixCodeTable(table, NewHuffmanTree(s.Right()), current+"1")
 	}
 }
 
-func writeHeader(freqTable map[string]int, outputFile *os.File) {
+func writeHeader(freqTable map[string]int, output io.Writer) {
 	jsonData, err := json.Marshal(freqTable)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
-	_, err = outputFile.Write(jsonData)
+	_, err = output.Write(jsonData)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
-	_, err = outputFile.WriteString("\n")
+	_, err = output.Write([]byte("\n"))
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 }
 
-func writeContents(prefixCodeTable map[string]string, inputFile *os.File, outputFile *os.File) error {
-	bitWriter := NewBitWriter(outputFile)
+func writeContents(prefixCodeTable map[string]string, input io.Reader, output io.Writer) error {
+	bitWriter := NewBitWriter(output)
 
-	reader := bufio.NewReader(inputFile)
+	reader := bufio.NewReader(input)
 	for {
 		char, _, err := reader.ReadRune()
 		if err == io.EOF {
@@ -106,24 +105,33 @@ func writeContents(prefixCodeTable map[string]string, inputFile *os.File, output
 	return nil
 }
 
-func huffmanEncode(input *os.File, output *os.File) {
-	frequencyTable, err := countCharacterOccurrences(input)
+// Encode compresses data from r and writes the compressed output to w.
+func Encode(r io.Reader, w io.Writer) error {
+	// Read all input into a buffer so we can process it twice
+	data, err := io.ReadAll(r)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
+	// First pass: count character frequencies
+	frequencyTable, err := countCharacterOccurrences(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+
+	// Build Huffman tree and prefix code table
 	tree := buildHuffmanTree(frequencyTable)
 
 	prefixCodeTable := make(map[string]string)
 	constructPrefixCodeTable(prefixCodeTable, tree, "")
 
-	writeHeader(frequencyTable, output)
+	// Write header (frequency table as JSON)
+	writeHeader(frequencyTable, w)
 
-	if _, err := input.Seek(0, 0); err != nil {
-		log.Fatal(err)
+	// Second pass: write encoded contents
+	if err := writeContents(prefixCodeTable, bytes.NewReader(data), w); err != nil {
+		return err
 	}
 
-	if err := writeContents(prefixCodeTable, input, output); err != nil {
-		log.Fatal(err)
-	}
+	return nil
 }

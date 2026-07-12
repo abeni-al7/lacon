@@ -1,4 +1,4 @@
-package main
+package core
 
 type HuffmanTree struct {
 	root    Node
@@ -40,4 +40,9 @@ func (h HuffmanTree) Less(other HuffmanTree) bool {
 	}
 
 	return h.sortKey < other.sortKey
+}
+
+// Root returns the root node of the tree. Used for internal traversal.
+func (h HuffmanTree) Root() Node {
+	return h.root
 }

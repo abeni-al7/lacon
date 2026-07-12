@@ -1,13 +1,12 @@
-package main
+package core
 
 import (
 	"bufio"
 	"encoding/json"
 	"io"
-	"os"
 )
 
-func ReadAndRebuildPrefixTable(headerBytes []byte) (map[string]string, int, error) {
+func readAndRebuildPrefixTable(headerBytes []byte) (map[string]string, int, error) {
 	var frequencyTable map[string]int
 	err := json.Unmarshal(headerBytes, &frequencyTable)
 	if err != nil {
@@ -26,17 +25,15 @@ func ReadAndRebuildPrefixTable(headerBytes []byte) (map[string]string, int, erro
 	return prefixCodeTable, totalCount, nil
 }
 
-func huffmanDecode(inputFile *os.File, outputFile *os.File) error {
-	defer inputFile.Close()
-
-	reader := bufio.NewReader(inputFile)
+func decodeFromReader(input io.Reader, output io.Writer) error {
+	reader := bufio.NewReader(input)
 
 	headerBytes, err := reader.ReadBytes('\n')
 	if err != nil {
 		return err
 	}
 
-	prefixTable, totalCount, err := ReadAndRebuildPrefixTable(headerBytes)
+	prefixTable, totalCount, err := readAndRebuildPrefixTable(headerBytes)
 	if err != nil {
 		return err
 	}
@@ -47,7 +44,7 @@ func huffmanDecode(inputFile *os.File, outputFile *os.File) error {
 	}
 
 	bitReader := NewBitReader(reader)
-	outputWriter := bufio.NewWriter(outputFile)
+	outputWriter := bufio.NewWriter(output)
 
 	var currentBits []byte
 	decodedCount := 0
@@ -79,4 +76,9 @@ func huffmanDecode(inputFile *os.File, outputFile *os.File) error {
 		return err
 	}
 	return nil
+}
+
+// Decode decompresses data from r and writes the decompressed output to w.
+func Decode(r io.Reader, w io.Writer) error {
+	return decodeFromReader(r, w)
 }

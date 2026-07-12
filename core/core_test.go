@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"bytes"
@@ -10,13 +10,7 @@ import (
 )
 
 func TestWriteHeader_WritesFrequencyTableAndNewline(t *testing.T) {
-	tempDir := t.TempDir()
-	outputPath := filepath.Join(tempDir, "output.dat")
-
-	outputFile, err := os.Create(outputPath)
-	if err != nil {
-		t.Fatalf("failed to create output file: %v", err)
-	}
+	var buf bytes.Buffer
 
 	frequencyTable := map[string]int{
 		"a": 2,
@@ -24,16 +18,9 @@ func TestWriteHeader_WritesFrequencyTableAndNewline(t *testing.T) {
 		"c": 3,
 	}
 
-	writeHeader(frequencyTable, outputFile)
+	writeHeader(frequencyTable, &buf)
 
-	if err := outputFile.Close(); err != nil {
-		t.Fatalf("failed to close output file: %v", err)
-	}
-
-	got, err := os.ReadFile(outputPath)
-	if err != nil {
-		t.Fatalf("failed to read output file: %v", err)
-	}
+	got := buf.Bytes()
 
 	var gotHeader map[string]int
 	if err := json.Unmarshal(bytes.TrimSpace(got), &gotHeader); err != nil {
@@ -46,43 +33,21 @@ func TestWriteHeader_WritesFrequencyTableAndNewline(t *testing.T) {
 }
 
 func TestWriteContents_WritesEncodedBits(t *testing.T) {
-	tempDir := t.TempDir()
-	inputPath := filepath.Join(tempDir, "input.txt")
-	outputPath := filepath.Join(tempDir, "output.dat")
+	var inputBuf bytes.Buffer
+	inputBuf.WriteString("ab")
 
-	if err := os.WriteFile(inputPath, []byte("ab"), 0o600); err != nil {
-		t.Fatalf("failed to write input file: %v", err)
-	}
-
-	inputFile, err := os.Open(inputPath)
-	if err != nil {
-		t.Fatalf("failed to open input file: %v", err)
-	}
-	defer inputFile.Close()
-
-	outputFile, err := os.Create(outputPath)
-	if err != nil {
-		t.Fatalf("failed to create output file: %v", err)
-	}
+	var outputBuf bytes.Buffer
 
 	prefixCodeTable := map[string]string{
 		"a": "0",
 		"b": "1",
 	}
 
-	if err := writeContents(prefixCodeTable, inputFile, outputFile); err != nil {
+	if err := writeContents(prefixCodeTable, &inputBuf, &outputBuf); err != nil {
 		t.Fatalf("writeContents returned an error: %v", err)
 	}
 
-	if err := outputFile.Close(); err != nil {
-		t.Fatalf("failed to close output file: %v", err)
-	}
-
-	got, err := os.ReadFile(outputPath)
-	if err != nil {
-		t.Fatalf("failed to read output file: %v", err)
-	}
-
+	got := outputBuf.Bytes()
 	want := []byte{0x40}
 	if !bytes.Equal(got, want) {
 		t.Fatalf("unexpected encoded bytes\nwant: %v\ngot:  %v", want, got)
@@ -91,8 +56,8 @@ func TestWriteContents_WritesEncodedBits(t *testing.T) {
 
 func TestReadAndRebuildPrefixTable_ParsesHeader(t *testing.T) {
 	header := map[string]int{
-		"a": 2,
-		"b": 1,
+		"a":   2,
+		"b":   1,
 		"\n": 1,
 	}
 
@@ -101,9 +66,9 @@ func TestReadAndRebuildPrefixTable_ParsesHeader(t *testing.T) {
 		t.Fatalf("failed to marshal header: %v", err)
 	}
 
-	prefixTable, totalCount, err := ReadAndRebuildPrefixTable(headerBytes)
+	prefixTable, totalCount, err := readAndRebuildPrefixTable(headerBytes)
 	if err != nil {
-		t.Fatalf("ReadAndRebuildPrefixTable returned an error: %v", err)
+		t.Fatalf("readAndRebuildPrefixTable returned an error: %v", err)
 	}
 
 	if totalCount != 4 {
@@ -111,8 +76,8 @@ func TestReadAndRebuildPrefixTable_ParsesHeader(t *testing.T) {
 	}
 
 	want := map[string]string{
-		"a": "1",
-		"b": "01",
+		"a":  "1",
+		"b":  "01",
 		"\n": "00",
 	}
 
@@ -159,98 +124,38 @@ func TestConstructPrefixCodeTable_SingleLeafTree(t *testing.T) {
 }
 
 func TestHuffmanRoundTrip_PreservesNewlines(t *testing.T) {
-	tempDir := t.TempDir()
-	inputPath := filepath.Join(tempDir, "input.txt")
-	compressedPath := filepath.Join(tempDir, "compressed.dat")
-	decodedPath := filepath.Join(tempDir, "decoded.txt")
-
 	original := []byte("hello\nworld\n")
-	if err := os.WriteFile(inputPath, original, 0o600); err != nil {
-		t.Fatalf("failed to write input file: %v", err)
+
+	var compressedBuf bytes.Buffer
+	if err := Encode(bytes.NewReader(original), &compressedBuf); err != nil {
+		t.Fatalf("Encode returned an error: %v", err)
 	}
 
-	inputFile, err := os.Open(inputPath)
-	if err != nil {
-		t.Fatalf("failed to open input file: %v", err)
-	}
-	defer inputFile.Close()
-
-	compressedFile, err := os.Create(compressedPath)
-	if err != nil {
-		t.Fatalf("failed to create compressed file: %v", err)
-	}
-	defer compressedFile.Close()
-
-	huffmanEncode(inputFile, compressedFile)
-
-	if _, err := compressedFile.Seek(0, 0); err != nil {
-		t.Fatalf("failed to rewind compressed file: %v", err)
+	var decodedBuf bytes.Buffer
+	if err := Decode(bytes.NewReader(compressedBuf.Bytes()), &decodedBuf); err != nil {
+		t.Fatalf("Decode returned an error: %v", err)
 	}
 
-	decodedFile, err := os.Create(decodedPath)
-	if err != nil {
-		t.Fatalf("failed to create decoded file: %v", err)
-	}
-	defer decodedFile.Close()
-
-	if err := huffmanDecode(compressedFile, decodedFile); err != nil {
-		t.Fatalf("huffmanDecode returned an error: %v", err)
-	}
-
-	got, err := os.ReadFile(decodedPath)
-	if err != nil {
-		t.Fatalf("failed to read decoded file: %v", err)
-	}
-
+	got := decodedBuf.Bytes()
 	if !bytes.Equal(got, original) {
 		t.Fatalf("round-trip mismatch\nwant: %q\ngot:  %q", original, got)
 	}
 }
 
 func TestHuffmanRoundTrip_SingleSymbol(t *testing.T) {
-	tempDir := t.TempDir()
-	inputPath := filepath.Join(tempDir, "input.txt")
-	compressedPath := filepath.Join(tempDir, "compressed.dat")
-	decodedPath := filepath.Join(tempDir, "decoded.txt")
-
 	original := []byte("aaaaaa")
-	if err := os.WriteFile(inputPath, original, 0o600); err != nil {
-		t.Fatalf("failed to write input file: %v", err)
+
+	var compressedBuf bytes.Buffer
+	if err := Encode(bytes.NewReader(original), &compressedBuf); err != nil {
+		t.Fatalf("Encode returned an error: %v", err)
 	}
 
-	inputFile, err := os.Open(inputPath)
-	if err != nil {
-		t.Fatalf("failed to open input file: %v", err)
-	}
-	defer inputFile.Close()
-
-	compressedFile, err := os.Create(compressedPath)
-	if err != nil {
-		t.Fatalf("failed to create compressed file: %v", err)
-	}
-	defer compressedFile.Close()
-
-	huffmanEncode(inputFile, compressedFile)
-
-	if _, err := compressedFile.Seek(0, 0); err != nil {
-		t.Fatalf("failed to rewind compressed file: %v", err)
+	var decodedBuf bytes.Buffer
+	if err := Decode(bytes.NewReader(compressedBuf.Bytes()), &decodedBuf); err != nil {
+		t.Fatalf("Decode returned an error: %v", err)
 	}
 
-	decodedFile, err := os.Create(decodedPath)
-	if err != nil {
-		t.Fatalf("failed to create decoded file: %v", err)
-	}
-	defer decodedFile.Close()
-
-	if err := huffmanDecode(compressedFile, decodedFile); err != nil {
-		t.Fatalf("huffmanDecode returned an error: %v", err)
-	}
-
-	got, err := os.ReadFile(decodedPath)
-	if err != nil {
-		t.Fatalf("failed to read decoded file: %v", err)
-	}
-
+	got := decodedBuf.Bytes()
 	if !bytes.Equal(got, original) {
 		t.Fatalf("round-trip mismatch\nwant: %q\ngot:  %q", original, got)
 	}
@@ -284,34 +189,23 @@ func TestConstructPrefixCodeTable_NestedTree(t *testing.T) {
 }
 
 func TestCountCharacterOccurrences_MainUseCase(t *testing.T) {
-	tempDir := t.TempDir()
-	filePath := filepath.Join(tempDir, "input.txt")
 	content := "hello\nworld"
+	reader := bytes.NewReader([]byte(content))
 
-	if err := os.WriteFile(filePath, []byte(content), 0o600); err != nil {
-		t.Fatalf("failed to write test input file: %v", err)
-	}
-
-	file, err := os.Open(filePath)
-	if err != nil {
-		t.Fatalf("failed to open test input file: %v", err)
-	}
-	defer file.Close()
-
-	got, err := countCharacterOccurrences(file)
+	got, err := countCharacterOccurrences(reader)
 	if err != nil {
 		t.Fatalf("countCharacterOccurrences returned an error: %v", err)
 	}
 
 	want := map[string]int{
-		"h": 1,
-		"e": 1,
-		"l": 3,
-		"o": 2,
+		"h":  1,
+		"e":  1,
+		"l":  3,
+		"o":  2,
 		"\n": 1,
-		"w": 1,
-		"r": 1,
-		"d": 1,
+		"w":  1,
+		"r":  1,
+		"d":  1,
 	}
 
 	if !reflect.DeepEqual(got, want) {
@@ -350,5 +244,59 @@ func TestBuildHuffmanTree_SingleLetter(t *testing.T) {
 
 	if !tree.IsLeaf() {
 		t.Fatal("expected leaf root for single letter")
+	}
+}
+
+// TestEncodeDecode_WithFiles tests the public API using actual files (integration-style)
+func TestEncodeDecode_WithFiles(t *testing.T) {
+	tempDir := t.TempDir()
+	inputPath := filepath.Join(tempDir, "input.txt")
+	compressedPath := filepath.Join(tempDir, "compressed.dat")
+	decodedPath := filepath.Join(tempDir, "decoded.txt")
+
+	original := []byte("hello\nworld\n")
+	if err := os.WriteFile(inputPath, original, 0o600); err != nil {
+		t.Fatalf("failed to write input file: %v", err)
+	}
+
+	inputFile, err := os.Open(inputPath)
+	if err != nil {
+		t.Fatalf("failed to open input file: %v", err)
+	}
+	defer inputFile.Close()
+
+	compressedFile, err := os.Create(compressedPath)
+	if err != nil {
+		t.Fatalf("failed to create compressed file: %v", err)
+	}
+
+	if err := Encode(inputFile, compressedFile); err != nil {
+		t.Fatalf("Encode returned an error: %v", err)
+	}
+	compressedFile.Close()
+
+	compressedFile, err = os.Open(compressedPath)
+	if err != nil {
+		t.Fatalf("failed to open compressed file: %v", err)
+	}
+	defer compressedFile.Close()
+
+	decodedFile, err := os.Create(decodedPath)
+	if err != nil {
+		t.Fatalf("failed to create decoded file: %v", err)
+	}
+	defer decodedFile.Close()
+
+	if err := Decode(compressedFile, decodedFile); err != nil {
+		t.Fatalf("Decode returned an error: %v", err)
+	}
+
+	got, err := os.ReadFile(decodedPath)
+	if err != nil {
+		t.Fatalf("failed to read decoded file: %v", err)
+	}
+
+	if !bytes.Equal(got, original) {
+		t.Fatalf("round-trip mismatch\nwant: %q\ngot:  %q", original, got)
 	}
 }

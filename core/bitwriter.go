@@ -1,11 +1,11 @@
-package main
+package core
 
 import "io"
 
 type BitWriter struct {
 	writer io.Writer
 	buffer byte
-	count int
+	count  int
 }
 
 func NewBitWriter(w io.Writer) *BitWriter {

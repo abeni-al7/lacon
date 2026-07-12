@@ -1,9 +1,9 @@
-package main
+package core
 
 type InternalNode struct {
 	weight int
-	left Node
-	right Node
+	left   Node
+	right  Node
 }
 
 func NewInternalNode(weight int, l *Node, r *Node) InternalNode {
@@ -14,7 +14,7 @@ func (i InternalNode) Weight() int {
 	return i.weight
 }
 
-func (i InternalNode)IsLeaf() bool {
+func (i InternalNode) IsLeaf() bool {
 	return false
 }
 

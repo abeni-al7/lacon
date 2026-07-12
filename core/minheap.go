@@ -1,4 +1,4 @@
-package main
+package core
 
 type MinHeap []HuffmanTree
 
@@ -7,7 +7,7 @@ func (h MinHeap) Len() int {
 }
 
 func (h MinHeap) Less(i, j int) bool {
-	return h[i].Less(h[j])// min-heap impl
+	return h[i].Less(h[j]) // min-heap impl
 }
 
 func (h MinHeap) Swap(i, j int) {
@@ -21,7 +21,7 @@ func (h *MinHeap) Push(x any) {
 func (h *MinHeap) Pop() any {
 	old := *h
 	n := len(old)
-	x := old[n - 1]
-	*h = old[0:n-1]
+	x := old[n-1]
+	*h = old[0 : n-1]
 	return x
 }

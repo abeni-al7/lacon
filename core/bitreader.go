@@ -1,11 +1,11 @@
-package main
+package core
 
 import "io"
 
 type BitReader struct {
 	reader io.Reader
 	buffer byte
-	count uint8 
+	count  uint8
 }
 
 func NewBitReader(r io.Reader) *BitReader {

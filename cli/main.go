@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+
+	"github.com/abeni-al7/lacon/core"
 )
 
 func main() {
@@ -41,9 +43,11 @@ func main() {
 	defer outputFile.Close()
 
 	if *encode {
-		huffmanEncode(inputFile, outputFile)
+		if err := core.Encode(inputFile, outputFile); err != nil {
+			log.Fatal(err)
+		}
 	} else {
-		if err := huffmanDecode(inputFile, outputFile); err != nil {
+		if err := core.Decode(inputFile, outputFile); err != nil {
 			log.Fatal(err)
 		}
 	}
