@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from 'react'
-import { Upload, FileText, Lock, Unlock } from 'lucide-react'
+import { Upload, Lock, Unlock, X, File, CheckCircle2 } from 'lucide-react'
 
 interface FileUploaderProps {
   mode: 'encode' | 'decode'
@@ -43,7 +43,6 @@ export default function FileUploader({ mode, onFileSelect, isProcessing, selecte
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) handleFile(file)
-    // Reset so re-selecting the same file triggers onChange
     e.target.value = ''
   }
 
@@ -75,62 +74,92 @@ export default function FileUploader({ mode, onFileSelect, isProcessing, selecte
         onClick={isProcessing ? undefined : handleClick}
         className={`
           relative cursor-pointer rounded-2xl border-2 border-dashed
-          transition-all duration-200 p-10 text-center
+          transition-all duration-300 overflow-hidden
           ${isDragging
-            ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 scale-[1.02]'
+            ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 scale-[1.02] shadow-[var(--shadow-glow)]'
             : selectedFile
-              ? 'border-[var(--color-primary)] bg-[var(--color-muted)]'
-              : 'border-[var(--color-border)] hover:border-[var(--color-primary)]/50 hover:bg-[var(--color-muted)]'
+              ? 'border-[var(--color-primary)]/40 bg-[var(--color-card)] hover:border-[var(--color-primary)]/60'
+              : 'border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)]/40 hover:bg-[var(--color-muted)] hover:shadow-md'
           }
           ${isProcessing ? 'pointer-events-none opacity-60' : ''}
         `}
       >
-        {selectedFile ? (
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-xl bg-[var(--color-primary)]/10 flex items-center justify-center">
-              <FileText size={28} className="text-[var(--color-primary)]" />
-            </div>
-            <div>
-              <p className="font-medium text-[var(--color-foreground)]">{selectedFile.name}</p>
-              <p className="text-sm text-[var(--color-foreground)] opacity-60 mt-0.5">
-                {formatSize(selectedFile.size)}
-              </p>
-            </div>
-            {!isProcessing && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onFileSelect(null as unknown as File)
-                }}
-                className="text-sm text-[var(--color-foreground)] opacity-50 hover:opacity-100 underline underline-offset-2 transition-opacity"
-              >
-                Choose a different file
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-xl bg-[var(--color-muted)] flex items-center justify-center">
-              {mode === 'encode'
-                ? <Lock size={28} className="text-[var(--color-primary)] opacity-70" />
-                : <Unlock size={28} className="text-[var(--color-accent)] opacity-70" />
-              }
-            </div>
-            <div>
-              <p className="font-medium text-[var(--color-foreground)]">
-                {isDragging ? 'Drop file here' : 'Drop a file here or click to browse'}
-              </p>
-              <p className="text-sm text-[var(--color-foreground)] opacity-50 mt-1">
-                {mode === 'encode' ? 'Any file type supported' : 'Upload a .lacon compressed file'}
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-[var(--color-foreground)] opacity-40 mt-2">
-              <Upload size={12} />
-              <span>Select file to {actionLabel.toLowerCase()}</span>
-            </div>
-          </div>
+        {/* Drag overlay glow */}
+        {isDragging && (
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[var(--color-primary)]/5 to-transparent pointer-events-none" />
         )}
+
+        <div className="relative p-8 sm:p-10 text-center">
+          {selectedFile ? (
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--color-primary)]/10 to-[var(--color-primary)]/5 flex items-center justify-center border border-[var(--color-primary)]/10">
+                  <File size={30} className="text-[var(--color-primary)]" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[var(--color-success)] flex items-center justify-center shadow-sm">
+                  <CheckCircle2 size={12} className="text-white" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold text-[var(--color-foreground)] text-base">{selectedFile.name}</p>
+                <p className="text-sm text-[var(--color-foreground)] opacity-50">{formatSize(selectedFile.size)}</p>
+              </div>
+              {/* File size visual bar */}
+              <div className="w-full max-w-[200px] h-1.5 rounded-full bg-[var(--color-border)] overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-light)] transition-all duration-500"
+                  style={{ width: `${Math.min(100, (selectedFile.size / 10485760) * 100)}%` }}
+                />
+              </div>
+              {!isProcessing && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onFileSelect(null as unknown as File)
+                  }}
+                  className="inline-flex items-center gap-1.5 text-sm text-[var(--color-foreground)] opacity-40 hover:opacity-70 transition-opacity"
+                >
+                  <X size={14} />
+                  Remove file
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-4">
+              <div className={`
+                w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300
+                ${isDragging
+                  ? 'bg-[var(--color-primary)]/10 scale-110'
+                  : 'bg-[var(--color-muted)]'
+                }
+              `}>
+                {mode === 'encode'
+                  ? <Lock size={28} className={`transition-colors duration-300 ${isDragging ? 'text-[var(--color-primary)]' : 'text-[var(--color-primary)] opacity-60'}`} />
+                  : <Unlock size={28} className={`transition-colors duration-300 ${isDragging ? 'text-[var(--color-accent)]' : 'text-[var(--color-accent)] opacity-60'}`} />
+                }
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold text-[var(--color-foreground)]">
+                  {isDragging ? 'Release to drop your file' : 'Drop a file here or click to browse'}
+                </p>
+                <p className="text-sm text-[var(--color-foreground)] opacity-50">
+                  {mode === 'encode' ? 'Any file type supported' : 'Upload a .lacon compressed file'}
+                </p>
+              </div>
+              <div className={`
+                inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                ${isDragging
+                  ? 'bg-[var(--color-primary)] text-white shadow-md shadow-[var(--color-primary)]/20'
+                  : 'bg-[var(--color-muted)] text-[var(--color-foreground)] opacity-60 border border-[var(--color-border)]'
+                }
+              `}>
+                <Upload size={14} />
+                <span>Choose file to {actionLabel.toLowerCase()}</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
