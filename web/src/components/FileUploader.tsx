@@ -144,7 +144,7 @@ export default function FileUploader({ mode, onFileSelect, isProcessing, selecte
                   {isDragging ? 'Release to drop your file' : 'Drop a file here or click to browse'}
                 </p>
                 <p className="text-sm text-[var(--color-foreground)] opacity-50">
-                  {mode === 'encode' ? 'Any file type supported' : 'Upload a .lacon compressed file'}
+                  {mode === 'encode' ? 'Any plain text file supported' : 'Upload a .lacon compressed file'}
                 </p>
               </div>
               <div className={`

@@ -21,7 +21,7 @@ export default function Header() {
         </div>
       </div>
       <p className="text-base sm:text-lg text-[var(--color-foreground)] opacity-65 max-w-lg mx-auto leading-relaxed">
-        Compress and decompress files using{' '}
+        Compress and decompress text files using{' '}
         <span className="font-semibold opacity-90">Huffman coding</span> — fast, lossless, and entirely server-side.
       </p>
       <div className="flex items-center justify-center gap-2 mt-5">
