@@ -1,37 +1,50 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 )
 
 func main() {
-	inputPath := filepath.Join(".", "test", "test.txt")
-	inputFile, err := os.Open(inputPath)
+	encode := flag.Bool("e", false, "encode the input file")
+	decode := flag.Bool("d", false, "decode the input file")
+	flag.Parse()
+
+	if (*encode && *decode) || (!*encode && !*decode) {
+		fmt.Fprintln(os.Stderr, "Error: specify exactly one of -e or -d")
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	args := flag.Args()
+	if len(args) < 2 {
+		fmt.Fprintln(os.Stderr, "Error: input and output files are required")
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	input := args[0]
+	output := args[1]
+
+	inputFile, err := os.Open(input)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer inputFile.Close()
 
-	outputPath := filepath.Join(".", "test", "test_output.txt")
-	outputFile, err := os.Create(outputPath)
+	outputFile, err := os.Create(output)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer outputFile.Close()
 
-	huffmanEncode(inputFile, outputFile)
-
-	if _, err := outputFile.Seek(0, 0); err != nil {
-		log.Fatal(err)
+	if *encode {
+		huffmanEncode(inputFile, outputFile)
+	} else {
+		if err := huffmanDecode(inputFile, outputFile); err != nil {
+			log.Fatal(err)
+		}
 	}
-
-	decoded, err := os.Create(filepath.Join(".", "test", "decoded.txt"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer decoded.Close()
-
-	huffmanDecode(outputFile, decoded)
 }
