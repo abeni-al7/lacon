@@ -1,0 +1,221 @@
+{
+  "info": {
+    "name": "Lacon Huffman Compression API",
+    "description": "API for compressing (encoding) and decompressing (decoding) files using Huffman coding.\n\n## Endpoints\n\n### POST /encode\nAccepts a file via multipart/form-data and returns the compressed `.lacon` file.\n\n### POST /decode\nAccepts a `.lacon` compressed file via multipart/form-data and returns the decompressed file.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080"
+    }
+  ],
+  "item": [
+    {
+      "name": "Encode File",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 OK\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has Content-Type application/octet-stream\", function () {",
+              "    pm.response.to.have.header(\"Content-Type\", \"application/octet-stream\");",
+              "});",
+              "",
+              "pm.test(\"Response has Content-Disposition header with .lacon extension\", function () {",
+              "    var disposition = pm.response.headers.get(\"Content-Disposition\");",
+              "    pm.expect(disposition).to.include(\".lacon\");",
+              "});",
+              "",
+              "pm.test(\"Response has Content-Length header\", function () {",
+              "    pm.response.to.have.header(\"Content-Length\");",
+              "});",
+              "",
+              "pm.test(\"Response body is not empty\", function () {",
+              "    pm.expect(pm.response.body).to.not.be.empty;",
+              "});",
+              "",
+              "// Save the encoded response for use in the decode test",
+              "if (pm.response.code === 200) {",
+              "    pm.environment.set(\"encoded_file\", pm.response.body);",
+              "    console.log(\"Encoded file saved to environment\");",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": [],
+              "description": "The file to compress using Huffman encoding. Select any text file."
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/encode",
+          "host": ["{{base_url}}"],
+          "path": ["encode"]
+        },
+        "description": "Compress a file using Huffman encoding. Upload a file as multipart/form-data with the field name `file`. Returns the compressed `.lacon` file as a download."
+      },
+      "response": [
+        {
+          "name": "Successful Encoding",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/octet-stream"
+            },
+            {
+              "key": "Content-Disposition",
+              "value": "attachment; filename=\"example.txt.lacon\""
+            },
+            {
+              "key": "Content-Length",
+              "value": "512"
+            }
+          ],
+          "body": "[binary compressed data]"
+        },
+        {
+          "name": "Bad Request - Missing File",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n    \"error\": \"missing 'file' field in form data: ...\"\n}"
+        },
+        {
+          "name": "Method Not Allowed",
+          "status": "Method Not Allowed",
+          "code": 405,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n    \"error\": \"only POST method is allowed\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Decode File",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 OK\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has Content-Type application/octet-stream\", function () {",
+              "    pm.response.to.have.header(\"Content-Type\", \"application/octet-stream\");",
+              "});",
+              "",
+              "pm.test(\"Response has Content-Disposition header with .decoded extension\", function () {",
+              "    var disposition = pm.response.headers.get(\"Content-Disposition\");",
+              "    pm.expect(disposition).to.include(\".decoded\");",
+              "});",
+              "",
+              "pm.test(\"Response has Content-Length header\", function () {",
+              "    pm.response.to.have.header(\"Content-Length\");",
+              "});",
+              "",
+              "pm.test(\"Response body is not empty\", function () {",
+              "    pm.expect(pm.response.body).to.not.be.empty;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": [],
+              "description": "The .lacon compressed file to decompress. This should be a file previously encoded by the /encode endpoint."
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/decode",
+          "host": ["{{base_url}}"],
+          "path": ["decode"]
+        },
+        "description": "Decompress a `.lacon` file back to its original form. Upload the compressed file as multipart/form-data with the field name `file`. Returns the decompressed file as a download."
+      },
+      "response": [
+        {
+          "name": "Successful Decoding",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/octet-stream"
+            },
+            {
+              "key": "Content-Disposition",
+              "value": "attachment; filename=\"example.txt.lacon.decoded\""
+            },
+            {
+              "key": "Content-Length",
+              "value": "1024"
+            }
+          ],
+          "body": "[binary decompressed data - original file content]"
+        },
+        {
+          "name": "Bad Request - Missing File",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n    \"error\": \"missing 'file' field in form data: ...\"\n}"
+        },
+        {
+          "name": "Bad Request - Invalid Compressed Data",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n    \"error\": \"decoding failed: ...\"\n}"
+        }
+      ]
+    }
+  ]
+}
