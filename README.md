@@ -2,6 +2,8 @@
 
 A file compression tool implementing **Huffman coding** algorithm in Go. Lacon provides lossless compression by encoding characters based on their frequency in the input file, assigning shorter bit sequences to more frequent characters.
 
+Lacon includes a **CLI tool**, an **HTTP API server**, and a **web frontend** for easy compression and decompression.
+
 ## Features
 
 - **Huffman Encoding**: Compresses files using variable-length prefix codes based on character frequency
@@ -9,6 +11,8 @@ A file compression tool implementing **Huffman coding** algorithm in Go. Lacon p
 - **Bit-level I/O**: Efficient reading and writing of individual bits for optimal compression
 - **UTF-8 Support**: Handles Unicode characters in input files
 - **Self-contained Format**: Compressed files include a JSON header with the frequency table for standalone decompression
+- **HTTP API**: REST endpoints for encoding and decoding via multipart file upload
+- **Web Frontend**: Browser-based UI for drag-and-drop file compression/decompression
 
 ## How It Works
 
@@ -21,20 +25,72 @@ A file compression tool implementing **Huffman coding** algorithm in Go. Lacon p
 5. **Header Storage**: The frequency table is stored as a JSON header in the output file, followed by a newline character
 6. **Decoding**: The decoder reads the header, rebuilds the Huffman tree, and converts bit sequences back to original characters
 
+## Project Structure
+
+```
+lacon/
+├── cli/
+│   └── main.go            # CLI entry point and flag handling
+├── core/
+│   ├── bitreader.go       # Bit-level reading utilities
+│   ├── bitwriter.go       # Bit-level writing utilities
+│   ├── encoder.go         # Huffman encoding logic & public Encode API
+│   ├── decoder.go         # Huffman decoding logic & public Decode API
+│   ├── huffmantree.go     # Huffman tree structure
+│   ├── node.go            # Node interface definition
+│   ├── leafnode.go        # Leaf node implementation
+│   ├── intlnode.go        # Internal node implementation
+│   ├── minheap.go         # Min-heap for priority queue
+│   └── core_test.go       # Unit tests
+├── server/
+│   ├── main.go            # HTTP server entry point
+│   ├── handler.go         # /encode and /decode request handlers
+│   └── postman_collection.json  # Postman API collection
+├── web/
+│   ├── src/               # React + TypeScript + Vite frontend
+│   │   ├── components/    # UI components (Header, FileUploader, etc.)
+│   │   ├── hooks/         # Custom hooks (useCompression)
+│   │   └── App.tsx        # Main application component
+│   ├── index.html         # HTML entry point
+│   └── package.json       # Frontend dependencies
+├── docs/
+│   └── api.md             # HTTP API documentation
+├── go.mod                 # Go module definition
+└── README.md              # This file
+```
+
 ## Installation
+
+### CLI Tool
 
 ```bash
 # Clone the repository
 git clone https://github.com/abeni-al7/lacon.git
 cd lacon
 
-# Build the binary
-go build -o lacon
+# Build the CLI binary
+go build -o lacon ./cli
+```
+
+### HTTP Server
+
+```bash
+# Build the server binary
+go build -o lacon-server ./server
+```
+
+### Web Frontend
+
+```bash
+cd web
+npm install
 ```
 
 ## Usage
 
-### Encoding a File
+### CLI
+
+#### Encoding a File
 
 To compress a file, use the `-e` flag followed by the input and output file paths:
 
@@ -53,7 +109,7 @@ This will:
 3. Write the frequency table as a JSON header to `document.lac`
 4. Write the compressed bit sequence after the header
 
-### Decoding a File
+#### Decoding a File
 
 To decompress a file, use the `-d` flag followed by the compressed file and output file paths:
 
@@ -72,7 +128,7 @@ This will:
 3. Read the bit sequence and decode it back to the original content
 4. Write the restored content to `document_restored.txt`
 
-### Command-line Options
+#### Command-line Options
 
 | Flag | Description |
 |------|-------------|
@@ -81,9 +137,67 @@ This will:
 
 **Note**: You must specify exactly one of `-e` or `-d`. Both flags cannot be used together, and one is required.
 
+### HTTP Server
+
+Start the server:
+
+```bash
+go run ./server/main.go
+```
+
+By default the server listens on port `8080`. Set the `PORT` environment variable to change this:
+
+```bash
+PORT=3000 go run ./server/main.go
+```
+
+The server provides two endpoints:
+
+| Method | Endpoint   | Description                            |
+|--------|------------|----------------------------------------|
+| POST   | `/encode`  | Upload a file to compress              |
+| POST   | `/decode`  | Upload a `.lacon` file to decompress   |
+
+**Example using cURL:**
+
+```bash
+# Encode a file
+curl -X POST http://localhost:8080/encode \
+  -F "file=@document.txt" \
+  --output document.txt.lacon
+
+# Decode a file
+curl -X POST http://localhost:8080/decode \
+  -F "file=@document.txt.lacon" \
+  --output restored.txt
+```
+
+See the full [API documentation](docs/api.md) for details, including a Postman collection.
+
+### Web Frontend
+
+Start the development server:
+
+```bash
+cd web
+npm run dev
+```
+
+The frontend will be available at `http://localhost:5173` by default. It provides a browser interface for:
+- Selecting encode (compress) or decode (decompress) mode
+- Uploading files via drag-and-drop or file picker
+- Downloading the processed file automatically
+- Viewing compression statistics (original size vs. result size)
+
+**Environment Variables:**
+
+| Variable         | Default                  | Description                    |
+|------------------|--------------------------|--------------------------------|
+| `VITE_API_URL`   | `http://localhost:8080`  | URL of the Lacon HTTP server   |
+
 ## File Format
 
-Compressed files (`.lac` files) have the following structure:
+Compressed files (`.lac` / `.lacon` files) have the following structure:
 
 ```
 +------------------+------------------+
@@ -95,30 +209,12 @@ Compressed files (`.lac` files) have the following structure:
 - **Header**: A JSON object mapping each character to its frequency, terminated by a newline (`\n`)
 - **Compressed Data**: The actual encoded content as a sequence of bytes (8 bits each)
 
-## Project Structure
-
-```
-lacon/
-├── main.go           # CLI entry point and flag handling
-├── encoder.go        # Huffman encoding logic
-├── decoder.go        # Huffman decoding logic
-├── huffmantree.go    # Huffman tree structure
-├── node.go           # Node interface definition
-├── leafnode.go       # Leaf node implementation
-├── intlnode.go       # Internal node implementation
-├── minheap.go        # Min-heap for priority queue
-├── bitreader.go      # Bit-level reading utilities
-├── bitwriter.go      # Bit-level writing utilities
-├── main_test.go      # Unit tests
-└── go.mod            # Go module definition
-```
-
 ## Testing
 
-Run the test suite:
+Run the test suite from the project root:
 
 ```bash
-go test -v
+go test ./core -v
 ```
 
 The tests cover:
@@ -127,21 +223,45 @@ The tests cover:
 - Prefix code table construction
 - Full round-trip encoding/decoding
 - Single symbol and nested tree handling
+- File-based integration tests
 
-## Example
+## Full Workflow Example
 
 ```bash
 # Create a test file
 echo "hello world" > test.txt
 
-# Compress it
+# Compress using CLI
 ./lacon -e test.txt test.lac
 
-# Decompress it
+# Decompress using CLI
 ./lacon -d test.lac restored.txt
 
 # Verify the content
 diff test.txt restored.txt  # Should produce no output (files are identical)
+```
+
+Or using the server:
+
+```bash
+# Start the server in the background
+go run ./server/main.go &
+
+# Encode via API
+curl -s -X POST http://localhost:8080/encode \
+  -F "file=@test.txt" \
+  --output test.lacon
+
+# Decode via API
+curl -s -X POST http://localhost:8080/decode \
+  -F "file=@test.lacon" \
+  --output test_restored.txt
+
+# Verify
+diff test.txt test_restored.txt
+
+# Stop the server
+kill %1
 ```
 
 ## License
